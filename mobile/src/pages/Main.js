@@ -5,11 +5,14 @@ import { requestPermissionsAsync, getCurrentPositionAsync } from 'expo-location'
 import { MaterialIcons } from '@expo/vector-icons'
 
 import api from '../services/api'
+import { connect, disconnect, subscribeToNewDevs } from '../services/socket'
 
 function Main({ navigation }) {
   const [devs, setDevs] = useState([])
   const [currentRegion, setCurrentRegion] = useState(null)
   const [techs, setTechs] = useState('')
+  const [keyboardON, setKeyboardON] = useState(false)
+  const [keyboardSize, setKeyboardSize] = useState(0)
 
   useEffect(() => {
     async function loadInitialPosition() {
@@ -34,6 +37,22 @@ function Main({ navigation }) {
     loadInitialPosition()
   }, [])
 
+  useEffect(() => {
+    subscribeToNewDevs(dev => setDevs([...devs, dev]))
+  }, [devs])
+
+  function setupWebsocket() {
+    disconnect()
+
+    const { latitude, longitude } = currentRegion
+
+    connect(
+      latitude,
+      longitude,
+      techs
+    )
+  }
+
   async function loadDevs() {
     const { latitude, longitude } = currentRegion
 
@@ -46,11 +65,22 @@ function Main({ navigation }) {
     })
 
     setDevs(response.data.devs)
+    setupWebsocket()
   }
 
   function handleRegionChanged(region) {
     setCurrentRegion(region)
   }
+
+   Keyboard.addListener('keyboardDidShow', (event) => {
+    setKeyboardON(true)
+    setKeyboardSize(event.endCoordinates.height + 20)
+  })
+
+  Keyboard.addListener('keyboardDidHide', () => {
+    setKeyboardON(false)
+    setKeyboardSize(0)
+  })
 
   if(!currentRegion) return null
 
@@ -87,21 +117,22 @@ function Main({ navigation }) {
           </Marker>
         ))}
       </MapView>
-      
-      <View style={styles.searchForm}>
-        <TextInput 
-          style={styles.searchInput} 
-          placeholder="Buscar devs por techs..."
-          placeholderTextColor="#999"
-          autoCapitalize="words"
-          autoCorrect={false}
-          value={techs}
-          onChangeText={setTechs}
-        />
+      <View style={keyboardON ? { bottom: keyboardSize } : styles.removeBottom}>
+        <View style={styles.searchForm}>
+          <TextInput 
+            style={styles.searchInput} 
+            placeholder="Buscar devs por techs..."
+            placeholderTextColor="#999"
+            autoCapitalize="words"
+            autoCorrect={false}
+            value={techs}
+            onChangeText={setTechs}
+          />
 
-        <TouchableOpacity onPress={loadDevs} style={styles.loadButton}>
-          <MaterialIcons name="my-location" size={20} color="#FFF" />
-        </TouchableOpacity>
+          <TouchableOpacity onPress={loadDevs} style={styles.loadButton}>
+            <MaterialIcons name="my-location" size={20} color="#FFF" />
+          </TouchableOpacity>
+        </View>
       </View>
     </>
   )
@@ -140,7 +171,7 @@ const styles = StyleSheet.create({
 
   searchForm: {
     position: 'absolute',
-    top: 20,
+    bottom: 10,
     left: 20,
     right: 20,
     zIndex: 5, 
@@ -155,15 +186,13 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     paddingHorizontal: 20,
     fontSize: 16,
-    //shadow iOS
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowOffset: {
       width: 4,
       height: 4,
     },
-    //shadow Android
-    elevation: 3,
+    elevation: 4,
   },
 
   loadButton: {
@@ -174,6 +203,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 15,
+  },
+
+  removeBottom: {
+    bottom: 20
   },
 })
 
