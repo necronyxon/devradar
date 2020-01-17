@@ -65,6 +65,7 @@ function DevForm({ onSubmit }) {
             <div className="input-block">
                 <label htmlFor="latitude">Latitude</label>      
                 <input 
+                step="any"
                 type="number" 
                 name="latitude" 
                 id="latitude" 
@@ -77,6 +78,7 @@ function DevForm({ onSubmit }) {
             <div className="input-block">
                 <label htmlFor="longitude">Longitude</label>      
                 <input 
+                step="any"
                 type="number" 
                 name="longitude" 
                 id="longitude" 
